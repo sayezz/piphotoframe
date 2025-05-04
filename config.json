@@ -1,0 +1,11 @@
+{
+    "timer":10,
+    "filter":[
+    "Weihnachten",
+    "Weltreise 2020"
+    ],
+    "enableTouch":true,
+    "showDate":true,
+    "showImgCount":true,
+    "showFolderName":true
+}
