@@ -1,7 +1,7 @@
 # Mount network folder
 sudo nano /etc/fstab
 add the following line
-//192.168.17.29/homes /mnt/paulNAS cifs username=Denis,password=f7Cq7qs5k40wlyfA,vers=3.0
+//192.168.xx.xx/folder /mnt/path cifs username=xxx,password=xxx,vers=3.0
 
 To mount all:
 sudo mount -a
@@ -13,12 +13,12 @@ nano .config/systemd/user/displayImage.service
 In the editor add the following:
 
 [Unit]
-Description=Start DisplayImage after login
+Description=Start photo frame after login
 After=graphical-session.target
 
 [Service]
-ExecStart=sudo /home/pi/showimg/main
-WorkingDirectory=/home/pi/showimg/
+ExecStart=sudo /home/pi/piphotoframe/main
+WorkingDirectory=/home/pi/piphotoframe/
 Restart=always
 Environment=DISPLAY=:0
 Environment=XAUTHORITY=/home/pi/.Xauthority
@@ -29,9 +29,9 @@ WantedBy=default.target
 
 Service gets started as user because I need to make sure that network, and desktop UI is finished loading.
 # start service
-systemctl --user start displayImage.service
+systemctl --user start piphotoframe.service
 # stop service
-systemctl --user stop displayImage.service
+systemctl --user stop piphotoframe.service
 
 # Dependencys
 sudo apt install nlohmann-json-dev
