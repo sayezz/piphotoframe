@@ -22,7 +22,7 @@
 using namespace std;
 using json = nlohmann::json;
 
-bool mouseClicked = false;
+//bool mouseClicked = false;
 int clickX = 0, clickY = 0;
 std::chrono::steady_clock::time_point clickTime;
 bool showClickEffect = false;
@@ -34,15 +34,29 @@ bool globalShowDate = true;
 bool globalShowImgCount = true;
 bool globalShowFolderName = true;
 
+bool isPressed = false;
+bool pendingClick = false;
+
+int screenWidth = 1920;
+int screenHeight = 1080;
+
 void onMouse(int event, int x, int y, int flags, void* userdata)
 {
     if(globalEnableTouch){
-        if (event == cv::EVENT_LBUTTONDOWN || event == cv::EVENT_RBUTTONDOWN || event == cv::EVENT_LBUTTONDBLCLK || event == cv::EVENT_RBUTTONDBLCLK) {
-            mouseClicked = true;
+        if (event == cv::EVENT_LBUTTONDOWN || event == cv::EVENT_RBUTTONDOWN ) {
+            isPressed = true;
             clickX = x;
             clickY = y;
             clickTime = std::chrono::steady_clock::now();
             showClickEffect = true;
+        }
+
+        if(event == cv::EVENT_LBUTTONUP || event == cv::EVENT_RBUTTONUP)
+        {
+            if(isPressed){
+                isPressed = false;
+                pendingClick = true;
+            }
         }
     }
 }
@@ -103,6 +117,10 @@ void getOpenCVWindowHandle(const std::string& windowName) {
             }
         }
     }
+
+    Screen*  screen = DefaultScreenOfDisplay(display);
+    screenWidth = screen->width;
+    screenHeight = screen->height;
 
     // Close the X display connection
     XCloseDisplay(display);
@@ -219,15 +237,31 @@ int main(){
         auto now = std::chrono::steady_clock::now();
         bool timeElapsed = (now - lastSwitchTime) >= switchInterval;
 
-        if (mouseClicked || timeElapsed)
-        {
-            if (mouseClicked) {
-                std::cout << "Mouse or touch clicked!" << std::endl;
-                mouseClicked = false;
+        bool freezeTimer = isPressed; // freeze if mouse/touch is held
+        bool triggerChange = pendingClick || (timeElapsed && !freezeTimer);
 
+        if (triggerChange)
+        {
+            bool rightSide = true;
+
+            if(clickX >= screenWidth/2){
+                // Right side has been clicked
+                rightSide = true;
+            }else{
+                // Lef side has been clicked
+                rightSide = false;
+            }
+
+            if (pendingClick) {
+                std::cout << "Mouse or touch clicked!" << std::endl;
+                pendingClick = false;
                 // Visual feedback: draw a small circle at click position
                 cv::Mat feedback = img.clone();
-                cv::circle(feedback, cv::Point(clickX, clickY), 10, cv::Scalar(255, 255, 255,0.5), 2); // green circle
+                if(rightSide){
+                    cv::circle(feedback, cv::Point(clickX, clickY), 10, cv::Scalar(255, 255, 255,0.5), 2); 
+                }else{
+                    cv::circle(feedback, cv::Point(clickX, clickY), 10, cv::Scalar(255, 0, 0,0.5), 2); 
+                }
 
                 cv::imshow("Window", feedback);
                 cv::waitKey(100); // Show for 100ms
@@ -236,7 +270,11 @@ int main(){
                 std::cout << "Auto-switch after 10 seconds!" << std::endl;
             }
 
-            img = display.getNextImage();
+            if(rightSide){
+                img = display.getNextImage();
+            }else{
+                img = display.getNextImage(true);
+            }
             if (!img.empty())
             {
                 cv::imshow("Window", img);

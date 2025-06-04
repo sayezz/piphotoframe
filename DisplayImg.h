@@ -24,7 +24,7 @@ public:
 
     std::vector<std::string> findImages();
     void startPreloading();
-    cv::Mat getNextImage();
+    cv::Mat getNextImage(bool prev=false);
 
     void resetVisitedPathsIfNeeded();
 
@@ -37,7 +37,7 @@ private:
     void loadVisitedPathsFromJson();
     void saveVisitedPathToJson(const std::string& newPath);
     void writeDate(cv::Mat& mat, std::string filePath);
-    void showFolderName(cv::Mat& mat, std::string filePath);
+    //void showFolderName(cv::Mat& mat, std::string filePath);
     void drawRoundedRectangle(cv::Mat& img, const cv::Rect& rect, const cv::Scalar& color, int radius, double alpha);
     void showImageCount(cv::Mat& mat);
     std::string folderPath = "/mnt/paulNAS/Bilder/";
@@ -48,7 +48,7 @@ private:
 
     std::vector<std::string> imagePaths;
     std::unordered_set<std::string> visitedPaths;
-    std::queue<std::pair<std::string, cv::Mat>> imageQueue;
+    //std::queue<std::pair<std::string, cv::Mat>> imageQueue;
     std::mutex queueMutex;
     std::condition_variable queueCondVar;
     std::thread preloadThread;
@@ -56,5 +56,9 @@ private:
     bool showDate = true;
     bool showImgCount = true;
     bool showFldrName = true;
+
+    std::deque<std::pair<std::string, cv::Mat>> imageBuffer; 
+    const int bufferSize = 10;
+    int currentBufferIndex = 4;   
  
 };

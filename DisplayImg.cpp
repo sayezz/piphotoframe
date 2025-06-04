@@ -99,7 +99,7 @@ void DisplayImg::preloadThreadFunc()
         resetVisitedPathsIfNeeded();
         {
             std::unique_lock<std::mutex> lock(queueMutex);
-            if (imageQueue.size() >= 3)
+            if (imageBuffer.size() >= bufferSize)
             {
                 queueCondVar.wait_for(lock, std::chrono::milliseconds(100));
                 continue;
@@ -136,7 +136,7 @@ void DisplayImg::preloadThreadFunc()
         if (!img.empty())
         {
             std::lock_guard<std::mutex> lock(queueMutex);
-            imageQueue.push({randomPath, img});
+            imageBuffer.push_back({randomPath, img});
             visitedPaths.insert(randomPath); // Mark as visited
             saveVisitedPathToJson(randomPath);
             queueCondVar.notify_one();
@@ -219,75 +219,97 @@ void DisplayImg::resetVisitedPathsIfNeeded()
     }
 }
 
-cv::Mat DisplayImg::getNextImage()
+cv::Mat DisplayImg::getNextImage(bool prev)
 {
     std::unique_lock<std::mutex> lock(queueMutex);
-    if (imageQueue.empty())
-    {
-        queueCondVar.wait(lock, [this]() { return !imageQueue.empty() || stopThread; });
-    }
 
-    if (!imageQueue.empty())
-    {
-        auto pair = imageQueue.front();
-        imageQueue.pop();
-        cv::Mat img = pair.second; // Return the cv::Mat
-        std::string filePath = pair.first;
-        if (!img.empty())
-        {
-            // Define your desired screen size here
-            int screenWidth = 1920;
-            int screenHeight = 1080;
+    queueCondVar.wait(lock, [this]() { 
+        return imageBuffer.size() >= 5 || stopThread; 
+    });
+    
 
-            // Calculate aspect ratios
-            double imgAspect = static_cast<double>(img.cols) / img.rows;
-            double screenAspect = static_cast<double>(screenWidth) / screenHeight;
-
-            int newWidth, newHeight;
-            if (imgAspect > screenAspect)
-            {
-                // Image is wider
-                newWidth = screenWidth;
-                newHeight = static_cast<int>(screenWidth / imgAspect);
-            }
-            else
-            {
-                // Image is taller
-                newHeight = screenHeight;
-                newWidth = static_cast<int>(screenHeight * imgAspect);
-            }
-
-            // Resize the image
-            cv::Mat resizedImg;
-            cv::resize(img, resizedImg, cv::Size(newWidth, newHeight));
-
-            // Create a black background image
-            cv::Mat outputImg = cv::Mat::zeros(screenHeight, screenWidth, resizedImg.type());
-
-            // Center the resized image onto the black background
-            int x = (screenWidth - newWidth) / 2;
-            int y = (screenHeight - newHeight) / 2;
-            resizedImg.copyTo(outputImg(cv::Rect(x, y, newWidth, newHeight)));
-            
-            if(showDate){
-                writeDate(outputImg, filePath);
-            }
-
-           
-
-            if(showImgCount){
-                showImageCount(outputImg);
-            }
-            
-            return outputImg;
-        }else{
-            return cv::Mat(); 
-        }
-    }
-    else
+    if (imageBuffer.empty())
     {
         return cv::Mat();
     }
+
+    if(prev){
+        if(currentBufferIndex > 0){
+            currentBufferIndex--;
+        }
+    }else{
+        if (currentBufferIndex < static_cast<int>(imageBuffer.size()) - 1) {
+            currentBufferIndex++;
+        } else {
+            // Optionally block until more images loaded
+            queueCondVar.wait_for(lock, std::chrono::milliseconds(100));
+        }
+
+        // Optional: Trim oldest images when we move too far forward
+        if (currentBufferIndex >= bufferSize - 1 && imageBuffer.size() >= bufferSize) {
+            imageBuffer.erase(imageBuffer.begin(), imageBuffer.begin() + 5);
+            currentBufferIndex -= 5;
+        }
+    }
+
+    if (currentBufferIndex >= static_cast<int>(imageBuffer.size()))
+        return cv::Mat(); // Shouldn't happen, but safe guard
+
+    auto pair = imageBuffer[currentBufferIndex];
+
+    cv::Mat img = pair.second; // Return the cv::Mat
+    std::string filePath = pair.first;
+    
+    if (!img.empty())
+    {
+        // Define your desired screen size here
+        int screenWidth = 1920;
+        int screenHeight = 1080;
+
+        // Calculate aspect ratios
+        double imgAspect = static_cast<double>(img.cols) / img.rows;
+        double screenAspect = static_cast<double>(screenWidth) / screenHeight;
+
+        int newWidth, newHeight;
+        if (imgAspect > screenAspect)
+        {
+            // Image is wider
+            newWidth = screenWidth;
+            newHeight = static_cast<int>(screenWidth / imgAspect);
+        }
+        else
+        {
+            // Image is taller
+            newHeight = screenHeight;
+            newWidth = static_cast<int>(screenHeight * imgAspect);
+        }
+
+        // Resize the image
+        cv::Mat resizedImg;
+        cv::resize(img, resizedImg, cv::Size(newWidth, newHeight));
+
+        // Create a black background image
+        cv::Mat outputImg = cv::Mat::zeros(screenHeight, screenWidth, resizedImg.type());
+
+        // Center the resized image onto the black background
+        int x = (screenWidth - newWidth) / 2;
+        int y = (screenHeight - newHeight) / 2;
+        resizedImg.copyTo(outputImg(cv::Rect(x, y, newWidth, newHeight)));
+        
+        if(showDate){
+            // This one shows the date and the folder name as one box
+            writeDate(outputImg, filePath);
+        }
+
+        if(showImgCount){
+            showImageCount(outputImg);
+        }
+        
+        return outputImg;
+    }else{
+        return cv::Mat(); 
+    }
+
 }
 
 void DisplayImg::showImageCount(cv::Mat& mat){
@@ -438,14 +460,17 @@ void DisplayImg::writeDate(cv::Mat& mat, std::string filePath)
     int lineSpacing = 5; // space between lines
 
     cv::putText(mat, dateText, cv::Point(posX, posY), fontFace, fontScale, textColor, thickness, cv::LINE_AA);
-    cv::putText(mat, folderName, cv::Point(posX, posY + dateSize.height + lineSpacing), fontFace, fontScale, textColor, thickness, cv::LINE_AA);
+
+    if(showFldrName){
+        cv::putText(mat, folderName, cv::Point(posX, posY + dateSize.height + lineSpacing), fontFace, fontScale, textColor, thickness, cv::LINE_AA);
+    }
 
 }
 
 void DisplayImg::setShowFolderName(bool value){
     this->showFldrName = value;
 }
-
+/*
 void DisplayImg::showFolderName(cv::Mat& mat, std::string filePath){
     if (mat.empty() || filePath.empty()) return;
 
@@ -499,7 +524,7 @@ void DisplayImg::showFolderName(cv::Mat& mat, std::string filePath){
     cv::putText(mat, folderName, cv::Point(posX, posY), fontFace, fontScale, textColor, thickness, cv::LINE_AA);
 
 }
-
+*/
 void DisplayImg::drawRoundedRectangle(cv::Mat& img, const cv::Rect& rect, const cv::Scalar& color, int radius, double alpha)
 {
     cv::Mat roi = img(rect);

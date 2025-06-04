@@ -1,8 +1,22 @@
 {
-    "timer":10,
+    "timer":25,
     "filter":[
     "Weihnachten",
-    "Weltreise 2020"
+    "Weltreise 2020",
+	"Ina",
+	"Bilder Bergens",
+	"Feier Denis",
+	"Hochzeit Artjom und Lisa",
+	"Hochzeit Olga und Paul",
+	"Japan März 2025",
+	"Olsbrücken 09.07 (Schaschlik Paragleiten)",
+	"Paragleiting Paul",
+	"SnowKiten Achenkirch",
+	"Sommerurlaub",
+	"Wakeboard",
+	"Winterurlaub",
+	"Kaiten Egypt 2023",
+	"Kaiten Garda 2022"
     ],
     "enableTouch":true,
     "showDate":true,
