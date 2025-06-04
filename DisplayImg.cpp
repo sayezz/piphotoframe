@@ -471,22 +471,27 @@ void DisplayImg::writeDate(cv::Mat& mat, std::string filePath)
 }
 
 std::string DisplayImg::replaceUmlauts(const std::string& input) {
-    std::unordered_map<char, std::string> replacements = {
-        {'ä', "ae"}, {'ö', "oe"}, {'ü', "ue"},
-        {'Ä', "Ae"}, {'Ö', "Oe"}, {'Ü', "Ue"},
-        {'ß', "ss"}  // Optional: handle sharp S
-    };
+    std::string output;
+    for (size_t i = 0; i < input.size(); ++i) {
+        unsigned char c = input[i];
 
-    std::string result;
-    for (char c : input) {
-        auto it = replacements.find(c);
-        if (it != replacements.end()) {
-            result += it->second;
-        } else {
-            result += c;
+        // Handle UTF-8 umlauts (ä=0xC3 0xA4, ö=0xC3 0xB6, ü=0xC3 0xBC)
+        if (c == 0xC3 && i + 1 < input.size()) {
+            unsigned char next = input[i + 1];
+            switch (next) {
+                case 0xA4: output += "ae"; i++; continue; // ä
+                case 0xB6: output += "oe"; i++; continue; // ö
+                case 0xBC: output += "ue"; i++; continue; // ü
+                case 0x84: output += "Ae"; i++; continue; // Ä
+                case 0x96: output += "Oe"; i++; continue; // Ö
+                case 0x9C: output += "Ue"; i++; continue; // Ü
+                case 0x9F: output += "ss"; i++; continue; // ß
+            }
         }
+
+        output += c; // Default: copy byte
     }
-    return result;
+    return output;
 }
 
 void DisplayImg::setShowFolderName(bool value){
