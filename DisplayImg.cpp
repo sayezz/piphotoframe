@@ -2,6 +2,7 @@
 #include <fstream>
 #include <filesystem>
 #include <algorithm>
+#include <unordered_map>
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 
@@ -412,6 +413,8 @@ void DisplayImg::writeDate(cv::Mat& mat, std::string filePath)
         folderName = path.parent_path().filename().string();
     }
 
+    folderName = replaceUmlauts(folderName);
+
     // --- Small random shift ---
     static std::random_device rd;
     static std::mt19937 gen(rd());
@@ -465,6 +468,25 @@ void DisplayImg::writeDate(cv::Mat& mat, std::string filePath)
         cv::putText(mat, folderName, cv::Point(posX, posY + dateSize.height + lineSpacing), fontFace, fontScale, textColor, thickness, cv::LINE_AA);
     }
 
+}
+
+std::string DisplayImg::replaceUmlauts(const std::string& input) {
+    std::unordered_map<char, std::string> replacements = {
+        {'ä', "ae"}, {'ö', "oe"}, {'ü', "ue"},
+        {'Ä', "Ae"}, {'Ö', "Oe"}, {'Ü', "Ue"},
+        {'ß', "ss"}  // Optional: handle sharp S
+    };
+
+    std::string result;
+    for (char c : input) {
+        auto it = replacements.find(c);
+        if (it != replacements.end()) {
+            result += it->second;
+        } else {
+            result += c;
+        }
+    }
+    return result;
 }
 
 void DisplayImg::setShowFolderName(bool value){

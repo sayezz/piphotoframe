@@ -33,6 +33,7 @@ public:
     void setShowImgCount(bool value);
     void setShowFolderName(bool value);
 private:
+    std::string replaceUmlauts(const std::string& input);
     void preloadThreadFunc();
     void loadVisitedPathsFromJson();
     void saveVisitedPathToJson(const std::string& newPath);
