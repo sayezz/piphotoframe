@@ -194,13 +194,35 @@ int main(){
 
     loadSettings("config.json");
     cv::namedWindow("Window", cv::WINDOW_NORMAL);
-    cv::setWindowProperty("Window", cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
+    //cv::setWindowProperty("Window", cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
 
     cv::setMouseCallback("Window", onMouse, nullptr);
 
     getOpenCVWindowHandle("Window");
 
 
+    cv::Mat image = cv::Mat::zeros(200, 400, CV_8UC3);
+
+    // Text to display
+    std::string text = "Lade...";
+
+    // Set text properties
+    int fontFace = cv::FONT_HERSHEY_SIMPLEX;
+    double fontScale = 1.0;
+    int thickness = 2;
+    cv::Scalar color(255, 255, 255); // white text
+
+    // Get text size to center it
+    int baseline = 0;
+    cv::Size textSize = cv::getTextSize(text, fontFace, fontScale, thickness, &baseline);
+    cv::Point textOrg((image.cols - textSize.width) / 2,
+                      (image.rows + textSize.height) / 2);
+
+    // Put the text on the image
+    cv::putText(image, text, textOrg, fontFace, fontScale, color, thickness);
+    cv::imshow("Window", image);
+    cv::waitKey(2);
+    
     DisplayImg display;
     display.setFolderFilters(globalFilters);
     display.setShowDate(globalShowDate);
@@ -244,16 +266,15 @@ int main(){
         {
             bool rightSide = true;
 
-            if(clickX >= screenWidth/2){
-                // Right side has been clicked
-                rightSide = true;
-            }else{
-                // Lef side has been clicked
-                rightSide = false;
-            }
-
             if (pendingClick) {
                 std::cout << "Mouse or touch clicked!" << std::endl;
+                if(clickX >= screenWidth/2){
+                    // Right side has been clicked
+                    rightSide = true;
+                }else{
+                    // Lef side has been clicked
+                    rightSide = false;
+                }
                 pendingClick = false;
                 // Visual feedback: draw a small circle at click position
                 cv::Mat feedback = img.clone();
@@ -271,10 +292,13 @@ int main(){
             }
 
             if(rightSide){
+                std::cout << "getNextImage Executed" << std::endl;
                 img = display.getNextImage();
             }else{
-                img = display.getNextImage(true);
+                std::cout << "getPrevImage Executed" << std::endl;
+                img = display.getPrevImage();
             }
+
             if (!img.empty())
             {
                 cv::imshow("Window", img);

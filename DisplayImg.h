@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <queue>
+#include <deque>
 #include <mutex>
 #include <condition_variable>
 #include <thread>
@@ -24,7 +25,8 @@ public:
 
     std::vector<std::string> findImages();
     void startPreloading();
-    cv::Mat getNextImage(bool prev=false);
+    cv::Mat getNextImage();
+    cv::Mat getPrevImage();
 
     void resetVisitedPathsIfNeeded();
 
@@ -41,6 +43,7 @@ private:
     //void showFolderName(cv::Mat& mat, std::string filePath);
     void drawRoundedRectangle(cv::Mat& img, const cv::Rect& rect, const cv::Scalar& color, int radius, double alpha);
     void showImageCount(cv::Mat& mat);
+    cv::Mat showImage(std::pair<std::string, cv::Mat> pair);
     std::string folderPath = "/mnt/paulNAS/Bilder/";
     std::vector<std::string> folderFilter;
 
@@ -49,7 +52,9 @@ private:
 
     std::vector<std::string> imagePaths;
     std::unordered_set<std::string> visitedPaths;
-    //std::queue<std::pair<std::string, cv::Mat>> imageQueue;
+    std::queue<std::pair<std::string, cv::Mat>> imageQueue;
+    std::deque<std::pair<std::string, cv::Mat>> pastImages;
+
     std::mutex queueMutex;
     std::condition_variable queueCondVar;
     std::thread preloadThread;
@@ -58,8 +63,12 @@ private:
     bool showImgCount = true;
     bool showFldrName = true;
 
-    std::deque<std::pair<std::string, cv::Mat>> imageBuffer; 
     const int bufferSize = 10;
-    int currentBufferIndex = 4;   
+    const int prevImageBufferSize = 5;
+    int currentBufferIndex = 99;   
+    bool first = true;
+    bool x = false;
+    
+    std::pair<std::string, cv::Mat> currentImg;
  
 };

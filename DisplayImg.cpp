@@ -2,7 +2,6 @@
 #include <fstream>
 #include <filesystem>
 #include <algorithm>
-#include <unordered_map>
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 
@@ -13,6 +12,7 @@ DisplayImg::DisplayImg()
     folderFilter.push_back("Weihnachten");
     std::srand(static_cast<unsigned int>(std::time(0)));
     loadVisitedPathsFromJson();
+
 }
 
 DisplayImg::~DisplayImg()
@@ -100,7 +100,7 @@ void DisplayImg::preloadThreadFunc()
         resetVisitedPathsIfNeeded();
         {
             std::unique_lock<std::mutex> lock(queueMutex);
-            if (imageBuffer.size() >= bufferSize)
+            if (imageQueue.size() >= bufferSize)
             {
                 queueCondVar.wait_for(lock, std::chrono::milliseconds(100));
                 continue;
@@ -137,7 +137,7 @@ void DisplayImg::preloadThreadFunc()
         if (!img.empty())
         {
             std::lock_guard<std::mutex> lock(queueMutex);
-            imageBuffer.push_back({randomPath, img});
+            imageQueue.push({randomPath, img});
             visitedPaths.insert(randomPath); // Mark as visited
             saveVisitedPathToJson(randomPath);
             queueCondVar.notify_one();
@@ -220,47 +220,74 @@ void DisplayImg::resetVisitedPathsIfNeeded()
     }
 }
 
-cv::Mat DisplayImg::getNextImage(bool prev)
-{
-    std::unique_lock<std::mutex> lock(queueMutex);
-
-    queueCondVar.wait(lock, [this]() { 
-        return imageBuffer.size() >= 5 || stopThread; 
-    });
-    
-
-    if (imageBuffer.empty())
-    {
+cv::Mat DisplayImg::getPrevImage(){
+    std::cout <<" " <<std::endl; 
+    if(pastImages.empty()){
         return cv::Mat();
     }
 
-    if(prev){
-        if(currentBufferIndex > 0){
-            currentBufferIndex--;
-        }
-    }else{
-        if (currentBufferIndex < static_cast<int>(imageBuffer.size()) - 1) {
-            currentBufferIndex++;
-        } else {
-            // Optionally block until more images loaded
-            queueCondVar.wait_for(lock, std::chrono::milliseconds(100));
-        }
 
-        // Optional: Trim oldest images when we move too far forward
-        if (currentBufferIndex >= bufferSize - 1 && imageBuffer.size() >= bufferSize) {
-            imageBuffer.erase(imageBuffer.begin(), imageBuffer.begin() + 5);
-            currentBufferIndex -= 5;
-        }
+    if (currentBufferIndex >= static_cast<int>(pastImages.size())) {
+        currentBufferIndex = static_cast<int>(pastImages.size()) - 1;
     }
 
-    if (currentBufferIndex >= static_cast<int>(imageBuffer.size()))
-        return cv::Mat(); // Shouldn't happen, but safe guard
+    currentBufferIndex--;
 
-    auto pair = imageBuffer[currentBufferIndex];
+    if (currentBufferIndex < 0) {
+        currentBufferIndex = 0;
+    }
 
-    cv::Mat img = pair.second; // Return the cv::Mat
-    std::string filePath = pair.first;
     
+
+    std::pair<std::string, cv::Mat> pair = pastImages[currentBufferIndex];
+    std::cout << "Prev: Index" << currentBufferIndex << std::endl;
+
+    return showImage(pair);
+    
+}
+cv::Mat DisplayImg::getNextImage()
+{
+    std::cout <<" " <<std::endl; 
+    if(currentBufferIndex < pastImages.size()-1 && !pastImages.empty()){
+
+        currentBufferIndex++;
+        auto pair = pastImages[currentBufferIndex];
+        std::cout << "Next: Index: " << currentBufferIndex << std::endl;
+
+        return showImage(pair);
+    }else{
+        std::cout << "NEXT: FROM QUEUE"  << std::endl;
+        std::unique_lock<std::mutex> lock(queueMutex);
+        if (imageQueue.empty())
+        {
+            queueCondVar.wait(lock, [this]() { return !imageQueue.empty() || stopThread; });
+        }
+
+        if (!imageQueue.empty())
+        {
+
+            currentImg = imageQueue.front();
+            imageQueue.pop();
+
+            if(pastImages. size() >= prevImageBufferSize){
+                pastImages.pop_front();
+            }
+            pastImages.push_back(currentImg);
+            currentBufferIndex = pastImages.size() - 1;
+            std::cout << "Index"  << currentBufferIndex << " Size: " << pastImages.size() << std::endl;
+
+            return showImage(currentImg);
+        }
+        else
+        {
+            return cv::Mat();
+        }
+    }
+}
+
+cv::Mat DisplayImg::showImage(std::pair<std::string, cv::Mat> pair){
+    cv::Mat img = pair.second; 
+    std::string filePath = pair.first;
     if (!img.empty())
     {
         // Define your desired screen size here
@@ -298,7 +325,6 @@ cv::Mat DisplayImg::getNextImage(bool prev)
         resizedImg.copyTo(outputImg(cv::Rect(x, y, newWidth, newHeight)));
         
         if(showDate){
-            // This one shows the date and the folder name as one box
             writeDate(outputImg, filePath);
         }
 
@@ -310,7 +336,6 @@ cv::Mat DisplayImg::getNextImage(bool prev)
     }else{
         return cv::Mat(); 
     }
-
 }
 
 void DisplayImg::showImageCount(cv::Mat& mat){
@@ -463,35 +488,10 @@ void DisplayImg::writeDate(cv::Mat& mat, std::string filePath)
     int lineSpacing = 5; // space between lines
 
     cv::putText(mat, dateText, cv::Point(posX, posY), fontFace, fontScale, textColor, thickness, cv::LINE_AA);
-
     if(showFldrName){
         cv::putText(mat, folderName, cv::Point(posX, posY + dateSize.height + lineSpacing), fontFace, fontScale, textColor, thickness, cv::LINE_AA);
     }
 
-}
-
-std::string DisplayImg::replaceUmlauts(const std::string& input) {
-    std::string output;
-    for (size_t i = 0; i < input.size(); ++i) {
-        unsigned char c = input[i];
-
-        // Handle UTF-8 umlauts (ä=0xC3 0xA4, ö=0xC3 0xB6, ü=0xC3 0xBC)
-        if (c == 0xC3 && i + 1 < input.size()) {
-            unsigned char next = input[i + 1];
-            switch (next) {
-                case 0xA4: output += "ae"; i++; continue; // ä
-                case 0xB6: output += "oe"; i++; continue; // ö
-                case 0xBC: output += "ue"; i++; continue; // ü
-                case 0x84: output += "Ae"; i++; continue; // Ä
-                case 0x96: output += "Oe"; i++; continue; // Ö
-                case 0x9C: output += "Ue"; i++; continue; // Ü
-                case 0x9F: output += "ss"; i++; continue; // ß
-            }
-        }
-
-        output += c; // Default: copy byte
-    }
-    return output;
 }
 
 void DisplayImg::setShowFolderName(bool value){
@@ -552,6 +552,7 @@ void DisplayImg::showFolderName(cv::Mat& mat, std::string filePath){
 
 }
 */
+
 void DisplayImg::drawRoundedRectangle(cv::Mat& img, const cv::Rect& rect, const cv::Scalar& color, int radius, double alpha)
 {
     cv::Mat roi = img(rect);
@@ -578,4 +579,28 @@ void DisplayImg::drawRoundedRectangle(cv::Mat& img, const cv::Rect& rect, const 
 
     // Blend overlay and original roi
     cv::addWeighted(overlay, alpha, img(rect), 1.0 - alpha, 0, img(rect));
+}
+
+std::string DisplayImg::replaceUmlauts(const std::string& input) {
+    std::string output;
+    for (size_t i = 0; i < input.size(); ++i) {
+        unsigned char c = input[i];
+
+        // Handle UTF-8 umlauts (ä=0xC3 0xA4, ö=0xC3 0xB6, ü=0xC3 0xBC)
+        if (c == 0xC3 && i + 1 < input.size()) {
+            unsigned char next = input[i + 1];
+            switch (next) {
+                case 0xA4: output += "ae"; i++; continue; // ä
+                case 0xB6: output += "oe"; i++; continue; // ö
+                case 0xBC: output += "ue"; i++; continue; // ü
+                case 0x84: output += "Ae"; i++; continue; // Ä
+                case 0x96: output += "Oe"; i++; continue; // Ö
+                case 0x9C: output += "Ue"; i++; continue; // Ü
+                case 0x9F: output += "ss"; i++; continue; // ß
+            }
+        }
+
+        output += c; // Default: copy byte
+    }
+    return output;
 }
