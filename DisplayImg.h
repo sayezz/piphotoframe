@@ -63,8 +63,8 @@ private:
     bool showImgCount = true;
     bool showFldrName = true;
 
-    const int bufferSize = 10;
-    const int prevImageBufferSize = 5;
+    const int bufferSize = 5;
+    const int prevImageBufferSize = 15;
     int currentBufferIndex = 99;   
     bool first = true;
     bool x = false;

@@ -194,7 +194,7 @@ int main(){
 
     loadSettings("config.json");
     cv::namedWindow("Window", cv::WINDOW_NORMAL);
-    //cv::setWindowProperty("Window", cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
+    cv::setWindowProperty("Window", cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
 
     cv::setMouseCallback("Window", onMouse, nullptr);
 
@@ -231,8 +231,42 @@ int main(){
 
     std::vector<std::string> result = display.findImages();
     if(result.empty()){
-        std::cout << "No Images found" <<std::endl;
-        return -1;
+
+        cv::Mat image = cv::Mat::zeros(400, 800, CV_8UC3);
+
+        // Text to display
+        std::string text = "Keine Bilder gefunden... suche weiter";
+
+
+        // Set text properties
+        int fontFace = cv::FONT_HERSHEY_SIMPLEX;
+        double fontScale = 1.0;
+        int thickness = 2;
+        cv::Scalar color(255, 255, 255); // white text
+
+        // Get text size to center it
+        int baseline = 0;
+        cv::Size textSize = cv::getTextSize(text, fontFace, fontScale, thickness, &baseline);
+
+        cv::Point textOrg((image.cols - textSize.width) / 2,(image.rows + textSize.height) / 2);
+
+        // Put the text on the image
+        cv::putText(image, text, textOrg, fontFace, fontScale, color, thickness);
+
+        cv::imshow("Window", image);
+        cv::waitKey(2);
+
+        bool looking = true;
+        while(looking){
+            std::cout << "No Images found" <<std::endl;
+            cv::waitKey(5000);
+            result = display.findImages();
+            if(!result.empty()){
+                looking = false;
+                break;
+            }
+        }
+
     }else{
         std::cout << result.size() << " images have benn found" <<std::endl;
     }
