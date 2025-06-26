@@ -8,7 +8,7 @@ sudo mount -a
 
 # Configure as service
 In your home directory ("cd ~") create and open:
-nano .config/systemd/user/displayImage.service
+nano .config/systemd/user/piphotoframe.service
 
 In the editor add the following:
 
@@ -26,6 +26,9 @@ Environment=XAUTHORITY=/home/pi/.Xauthority
 [Install]
 WantedBy=default.target
 
+
+Configer linger:
+sudo loginctl enable-linger pi
 
 Service gets started as user because I need to make sure that network, and desktop UI is finished loading.
 # start service
