@@ -30,6 +30,9 @@ WantedBy=default.target
 Configer linger:
 sudo loginctl enable-linger pi
 
+Enable the service:
+systemctl --user enable displayImage.service
+
 Service gets started as user because I need to make sure that network, and desktop UI is finished loading.
 # start service
 systemctl --user start piphotoframe.service
