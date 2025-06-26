@@ -38,7 +38,7 @@ bool isPressed = false;
 bool pendingClick = false;
 
 int screenWidth = 1920;
-int screenHeight = 1080;
+int screenHeight = 1200;
 
 void onMouse(int event, int x, int y, int flags, void* userdata)
 {
@@ -201,7 +201,7 @@ int main(){
     getOpenCVWindowHandle("Window");
 
 
-    cv::Mat image = cv::Mat::zeros(200, 400, CV_8UC3);
+    cv::Mat image = cv::Mat::zeros(400, 800, CV_8UC3);
 
     // Text to display
     std::string text = "Lade...";

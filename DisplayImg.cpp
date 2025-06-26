@@ -292,7 +292,7 @@ cv::Mat DisplayImg::showImage(std::pair<std::string, cv::Mat> pair){
     {
         // Define your desired screen size here
         int screenWidth = 1920;
-        int screenHeight = 1080;
+        int screenHeight = 1200;
 
         // Calculate aspect ratios
         double imgAspect = static_cast<double>(img.cols) / img.rows;
@@ -497,61 +497,6 @@ void DisplayImg::writeDate(cv::Mat& mat, std::string filePath)
 void DisplayImg::setShowFolderName(bool value){
     this->showFldrName = value;
 }
-/*
-void DisplayImg::showFolderName(cv::Mat& mat, std::string filePath){
-    if (mat.empty() || filePath.empty()) return;
-
-    // 1. Extract folder name
-    std::filesystem::path path(filePath);
-    std::string folderName = path.parent_path().filename().string(); // Get the parent folder name
-
-    if (folderName.empty()) return; // Safety
-
-    // 2. Random small shift
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(-20, 20);
-
-    int shiftX = dis(gen);
-    int shiftY = dis(gen);
-
-    // 3. Base position (aligned with date text, but slightly lower)
-    int baseX = 30;
-    int baseY = 80; // lower than the date text (which was at ~50)
-
-    int posX = std::max(0, baseX + shiftX);
-    int posY = std::max(30, baseY + shiftY);
-
-    // 4. Text style
-    int fontFace = cv::FONT_HERSHEY_SIMPLEX;
-    double fontScale = 0.8; // Slightly smaller than the date
-    int thickness = 1;
-    cv::Scalar textColor(255, 255, 255);
-
-    // 5. Measure text size
-    int baseline = 0;
-    cv::Size textSize = cv::getTextSize(folderName, fontFace, fontScale, thickness, &baseline);
-
-    // 6. Background rectangle
-    cv::Rect backgroundRect(posX - 5, posY - textSize.height - 5, textSize.width + 10, textSize.height + 10);
-    backgroundRect &= cv::Rect(0, 0, mat.cols, mat.rows); // Keep inside image
-
-    // 7. Semi-transparent black rounded rectangle
-    cv::Mat roi = mat(backgroundRect);
-    cv::Mat overlay;
-    roi.copyTo(overlay);
-
-    int cornerRadius = 10;
-    drawRoundedRectangle(mat, backgroundRect, cv::Scalar(0, 0, 0), cornerRadius, 0.5);
-
-    double alpha = 0.5; // 50% transparent
-    cv::addWeighted(overlay, alpha, roi, 1.0 - alpha, 0, roi);
-
-    // 8. Draw the text
-    cv::putText(mat, folderName, cv::Point(posX, posY), fontFace, fontScale, textColor, thickness, cv::LINE_AA);
-
-}
-*/
 
 void DisplayImg::drawRoundedRectangle(cv::Mat& img, const cv::Rect& rect, const cv::Scalar& color, int radius, double alpha)
 {

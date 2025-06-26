@@ -44,7 +44,7 @@ private:
     void drawRoundedRectangle(cv::Mat& img, const cv::Rect& rect, const cv::Scalar& color, int radius, double alpha);
     void showImageCount(cv::Mat& mat);
     cv::Mat showImage(std::pair<std::string, cv::Mat> pair);
-    std::string folderPath = "/mnt/paulNAS/Bilder/";
+    std::string folderPath = "/mnt/paulNAS/";
     std::vector<std::string> folderFilter;
 
     std::mutex visitedPathsMutex;
